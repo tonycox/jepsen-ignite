@@ -17,7 +17,8 @@
             [jepsen.control.net :as cn]
             [jepsen.os.debian :as debian])
   (:import (clojure.lang ExceptionInfo)
-           (org.apache.ignite Ignition IgniteCache)))
+           (org.apache.ignite Ignition IgniteCache)
+           (java.io File FileNotFoundException)))
 
 (defn localNodeLogFileName
   [node]
@@ -38,7 +39,7 @@
   "Kill stalled Apache Ignite."
   [node test]
   (info node "killing stalled nodes")
-  (c/sudo "root"
+  (c/su
     (meh (c/exec :pkill :-9 :-f "org.apache.ignite.startup.cmdline.CommandLineStartup"))))
 
 (defn fixNodeId
@@ -58,32 +59,55 @@
                     (str/replace #"n5" (cn/ip "n5")))
           :> output_file))
 
+(defn exists? [file]
+  (->> (:test :-f file)
+    (map c/escape)
+    (str/join " ")
+    (array-map :cmd)
+    c/wrap-cd
+    c/wrap-sudo
+    c/wrap-trace
+    c/ssh*
+    (fn [x] (if (zero? (:exit x)) true false))))
+
 (defn install!
   "Installs Apache Ignite on the given node."
   [node version]
-  (c/sudo "root"
+  (info node "installing ignite-" version)
+  (c/su
     (c/cd "/tmp"
-      (c/exec :wget :-c (str "http://apache-mirror.rbc.ru/pub/apache//ignite/" version "/apache-ignite-fabric-" version "-bin.zip"))
-      ;(c/exec :rm :-rf (str "apache-ignite-fabric-" version "-bin"))
-      ;(c/exec :rm :-rf str "apache-ignite-fabric")
+      (when (not (exists? (str "'apache-ignite-fabric-" version "-bin.zip'")))
+         (c/exec :wget :-c (str "https://archive.apache.org/dist/ignite/" version "/apache-ignite-fabric-" version "-bin.zip")))
+      (c/exec :rm :-rf (str "apache-ignite-fabric-" version "-bin"))
       (c/exec :unzip :-q (str "apache-ignite-fabric-" version "-bin.zip"))
+      (c/exec :rm :-rf "apache-ignite-fabric")
       (c/exec :mv :-f (str "apache-ignite-fabric-" version "-bin") "apache-ignite-fabric")
-      (c/exec :mkdir "/tmp/apache-ignite-fabric/jepsen"))))
+      (c/exec :mkdir "/tmp/apache-ignite-fabric/jepsen")
+      (c/exec :touch "/tmp/apache-ignite-fabric/node.log"))))
 
 (defn configure!
   "Uploads configuration files to the given node."
   [node test]
-  (info node "configuring")
+  (info node "configuring ignite grid")
   (setCfgParameters "default.xml" "/tmp/jepsen_config.xml")
-  (c/upload "/tmp/jepsen_config.xml" "/tmp/apache-ignite-fabric/jepsen/config.xml")
-  (io/copy (io/file (.getCanonicalPath (io/file "./resources/default.client.xml"))) (io/file (str "/tmp/jepsen_config.client." (fixNodeId node) ".xml")))
-  (spit (str "/tmp/jepsen_config.client." (fixNodeId node) ".xml") (str/replace (slurp (str "/tmp/jepsen_config.client." (fixNodeId node) ".xml")) "gridname" (fixNodeId node))))
+  (info node "cfg parameters")
+  (try (c/upload "/tmp/jepsen_config.xml" "/tmp/apache-ignite-fabric/jepsen/config.xml")
+       (catch FileNotFoundException e
+         (info node "some trouble with copying file." (:message e))))
+  (info node "copied config")
+  (as-> (io/file "./resources/default.client.xml") ^File x
+        (.getCanonicalPath x)
+        (io/file x)
+        (io/copy x (io/file (str "/tmp/jepsen_config.client." (fixNodeId node) ".xml"))))
+  (info node "configuring ignite client")
+  (as-> (fixNodeId node) id
+        (spit (str "/tmp/jepsen_config.client." id ".xml") (str/replace (slurp (str "/tmp/jepsen_config.client." id ".xml")) "gridname" id))))
 
 (defn start!
   "Starts Apache Ignite."
   [node test]
   (info node "starting ignite")
-  (c/sudo "root"
+  (c/su
     (c/cd "/tmp/apache-ignite-fabric"
       (c/exec "bin/ignite.sh" "jepsen/config.xml" :-v (c/lit ">node.log") (c/lit "2>&1 &"))
       (Thread/sleep 5000))))
@@ -92,7 +116,7 @@
   "Stops Apache Ignite."
   [node test]
   (info node "stopping ignite")
-  (c/sudo "root"
+  (c/su
     (meh (c/exec :killall :-9qw "ignite.sh"))))
 
 (defn wipe!
@@ -100,11 +124,11 @@
   [node test]
   (stop! node test)
   (info node "deleting data files")
-  (c/sudo "root"
+  (c/su
     (c/exec :rm :-rf "/tmp/apache-ignite-fabric/work/db")))
 
 
-(defn db
+(defn ignite
   "Apache Ignite for a particular version."
   [version]
   (reify db/DB
@@ -126,8 +150,8 @@
 
 ; Generators
 
-(defn r   [_ _] {:type :invoke, :f :read})
-(defn w   [_ _] {:type :invoke, :f :write, :value (rand-int 100)})
+(defn r [_ _] {:type :invoke, :f :read})
+(defn w [_ _] {:type :invoke, :f :write, :value (rand-int 100)})
 
 
 (defn ignite-get
@@ -138,7 +162,7 @@
   [cache op]
   (.put cache op op))
 
-(defrecord IgniteСlient [client node cache]
+(defrecord IgniteClient [client node cache]
   client/Client
 
   (setup! [this test node]
@@ -159,7 +183,7 @@
 (defn client
   "Ignite client"
   [node]
-  (IgniteСlient. nil nil nil))
+  (IgniteClient. nil nil nil))
 
 (defn std-gen
   "Generator"
@@ -190,4 +214,4 @@
           :nemesis   (nemesis/partition-random-halves)
           :checker   (checker/compose {:linear checker/linearizable})
           :os        debian/os
-          :db        (db version)}))
+          :db        (ignite version)}))
