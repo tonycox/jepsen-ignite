@@ -27,7 +27,7 @@ services:
     volumes:
       - ../jepsen-ignite:/jepsen-ignite
     privileged: true
-    hostname: control
+    hostname: jepsen-control
     networks:
       - default
     expose:

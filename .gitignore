@@ -3,3 +3,5 @@ target
 secret
 .lein-failures
 .DS_Store
+.idea
+*.iml

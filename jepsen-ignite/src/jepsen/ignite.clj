@@ -64,8 +64,8 @@
   (c/sudo "root"
     (c/cd "/tmp"
       (c/exec :wget :-c (str "http://apache-mirror.rbc.ru/pub/apache//ignite/" version "/apache-ignite-fabric-" version "-bin.zip"))
-      (c/exec :rm :-rf (str "apache-ignite-fabric-" version "-bin"))
-      (c/exec :rm :-rf str "apache-ignite-fabric")
+      ;(c/exec :rm :-rf (str "apache-ignite-fabric-" version "-bin"))
+      ;(c/exec :rm :-rf str "apache-ignite-fabric")
       (c/exec :unzip :-q (str "apache-ignite-fabric-" version "-bin.zip"))
       (c/exec :mv :-f (str "apache-ignite-fabric-" version "-bin") "apache-ignite-fabric")
       (c/exec :mkdir "/tmp/apache-ignite-fabric/jepsen"))))

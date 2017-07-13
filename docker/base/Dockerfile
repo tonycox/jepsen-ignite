@@ -19,8 +19,6 @@
 
 FROM openjdk:8
 
-LABEL description="base docker image with java 8"
-
 # install initial deps
 ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y apt-utils
