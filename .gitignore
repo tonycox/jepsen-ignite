@@ -1,0 +1,5 @@
+store
+target
+secret
+.lein-failures
+.DS_Store
