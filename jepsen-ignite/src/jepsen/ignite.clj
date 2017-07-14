@@ -74,7 +74,7 @@
 (defn install!
   "Installs Apache Ignite on the given node."
   [node version]
-  (info node "installing ignite-" version)
+  (info node (str "installing ignite-" version))
   (c/su
     (c/cd "/tmp"
       (when (not (exists? (str "'apache-ignite-fabric-" version "-bin.zip'")))
@@ -91,9 +91,7 @@
   [node test]
   (info node "configuring ignite grid")
   (setCfgParameters "default.xml" "/tmp/jepsen_config.xml")
-  (info node "cfg parameters")
   (c/exec :cp "/tmp/jepsen_config.xml" "/tmp/apache-ignite-fabric/jepsen/config.xml")
-  (info node "copied config")
   (as-> (io/file "./resources/default.client.xml") ^File x
         (.getCanonicalPath x)
         (io/file x)
