@@ -19,8 +19,10 @@
 #
 ################################################################################
 
-wget -c https://github.com/jepsen-io/jepsen/archive/${JEPSEN_VERSION}.tar.gz
-tar -zxf ${JEPSEN_VERSION}.tar.gz
-rm -f ${JEPSEN_VERSION}.tar.gz
-mv jepsen-${JEPSEN_VERSION} jepsen
-cd jepsen/jepsen && lein install
+if [ ! -f /jepsen ]; then
+    wget -c https://github.com/jepsen-io/jepsen/archive/${JEPSEN_VERSION}.tar.gz
+    tar -zxf ${JEPSEN_VERSION}.tar.gz
+    rm -f ${JEPSEN_VERSION}.tar.gz
+    mv jepsen-${JEPSEN_VERSION} jepsen
+    cd jepsen/jepsen && lein install
+fi

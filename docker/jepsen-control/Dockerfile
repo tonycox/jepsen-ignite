@@ -28,7 +28,7 @@ RUN chmod +x /usr/bin/lein
 
 # install jepsen
 ADD ./install-jepsen.sh /install-jepsen.sh
-RUN chmod a+x /install-jepsen.sh && sh install-jepsen.sh
+RUN chmod a+x /install-jepsen.sh && sh /install-jepsen.sh
 
 # configure ssh
 ADD ./init.sh /init.sh

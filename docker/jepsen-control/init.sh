@@ -29,8 +29,8 @@ if [ ! -f ~/.ssh/known_hosts ]; then
     echo ${SSH_PUBLIC_KEY} > ~/.ssh/id_rsa.pub
     echo > ~/.ssh/known_hosts
     for f in $(seq 1 5); do
-        until nc -vzw 1 n$f 22; do sleep 5; done
-	    ssh-keyscan -t rsa n$f >> ~/.ssh/known_hosts
+        until nc -vzw 1 n${f} 22; do sleep 5; done
+	    ssh-keyscan -t rsa n${f} >> ~/.ssh/known_hosts
     done
 fi
 
