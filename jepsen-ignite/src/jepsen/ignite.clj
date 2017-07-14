@@ -10,9 +10,10 @@
                     [control   :as c :refer [|]]
                     [checker   :as checker]
                     [model     :as model]
+
                     [nemesis   :as nemesis]
                     [generator :as gen]
-                    [util      :refer [timeout meh]]]
+                    [util      :refer [timeout meh with-retry]]]
             [jepsen.control.util :as cu]
             [jepsen.control.net :as cn]
             [jepsen.os.debian :as debian])
@@ -68,7 +69,7 @@
     c/wrap-sudo
     c/wrap-trace
     c/ssh*
-    (fn [x] (if (zero? (:exit x)) true false))))
+    ((fn [x] (if (zero? (:exit x)) true false)))))
 
 (defn install!
   "Installs Apache Ignite on the given node."
@@ -91,9 +92,7 @@
   (info node "configuring ignite grid")
   (setCfgParameters "default.xml" "/tmp/jepsen_config.xml")
   (info node "cfg parameters")
-  (try (c/upload "/tmp/jepsen_config.xml" "/tmp/apache-ignite-fabric/jepsen/config.xml")
-       (catch FileNotFoundException e
-         (info node "some trouble with copying file." (:message e))))
+  (c/exec :cp "/tmp/jepsen_config.xml" "/tmp/apache-ignite-fabric/jepsen/config.xml")
   (info node "copied config")
   (as-> (io/file "./resources/default.client.xml") ^File x
         (.getCanonicalPath x)

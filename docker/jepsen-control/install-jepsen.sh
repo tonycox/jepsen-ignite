@@ -1,3 +1,5 @@
+#!/bin/sh
+
 ################################################################################
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,21 +19,8 @@
 #
 ################################################################################
 
-FROM java-base
-
-# install clojure and leiningen
-ARG JEPSEN_VERSION=0.1.4
-ENV LEIN_ROOT true
-
-ADD https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein /usr/bin
-RUN chmod +x /usr/bin/lein
-
-# install jepsen
-ADD ./install-jepsen.sh /install-jepsen.sh
-RUN chmod a+x /install-jepsen.sh && sh install-jepsen.sh
-
-# configure ssh
-ADD ./init.sh /init.sh
-RUN chmod a+x /init.sh
-
-CMD ["sh", "/init.sh"]
+wget -c https://github.com/jepsen-io/jepsen/archive/${JEPSEN_VERSION}.tar.gz
+tar -zxf ${JEPSEN_VERSION}.tar.gz
+rm -f ${JEPSEN_VERSION}.tar.gz
+mv jepsen-${JEPSEN_VERSION} jepsen
+cd jepsen/jepsen && lein install
